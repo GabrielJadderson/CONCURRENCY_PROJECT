@@ -1,13 +1,36 @@
 package endpackage;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 
 /**
- * @author Fabrizio Montesi <fmontesi@imada.sdu.dk>
+ * @author Gabriel Jadderson github.com/TheProthean
  */
 public class Exam
 {
+
+    public interface Revoid
+    {
+        void doget(Path path);
+    }
+
+    //public static ExecutorService executorService = Executors.newCachedThreadPool();
+    public static ExecutorService executorService;
+
+    public static CountDownLatch countDownLatch = new CountDownLatch(1);
+    public static DirectoryStream<Path> stream;
+
+    private static final BlockingDeque<ResultObject> THE_LIST = new LinkedBlockingDeque<>();
+    private static final BlockingDeque<ResultObject> resultList = new LinkedBlockingDeque<>();
+    //public static List<Result> resultList = Collections.synchronizedList(new ArrayList<>());
 
     /**
      * This method recursively visits a directory to find all the text files contained in it and its subdirectories.
@@ -30,8 +53,129 @@ public class Exam
      */
     public static List<Result> findAll(Path dir)
     {
-        throw new UnsupportedOperationException();
+
+        return null;
     }
+
+    public static void produceIntoList(BlockingDeque<ResultObject> list, Path initialPath)
+    {
+        try
+        {
+            Files.walk(initialPath).forEach((x) ->
+            {
+                if (x.getFileName().toString().contains(".txt"))
+                {
+                    ResultObject resultObject = new ResultObject(x, -1);
+                    list.add(resultObject);
+                }
+            });
+
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        System.out.println("added " + list.size() + " to list.");
+    }
+
+    public static void producer(ExecutorService executor)
+    {
+        IntStream.range( 0, 500 ).forEach( i ->
+        {
+            Future<ResultObject> future = executor.submit(() -> consume(THE_LIST.takeFirst()));
+            try
+            {
+                ResultObject object = future.get();
+
+                synchronized (resultList) {
+                    resultList.add(object);
+                }
+                System.out.println(object.path() + " : " + object.number() + " SIZE OF LIST: " + resultList.size() + " blocking list:" + THE_LIST.size());
+            } catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        });
+    }
+
+
+    private static ResultObject consume(ResultObject resultObject)
+    {
+        if (resultObject.number() == -1)
+        {
+            return new ResultObject(resultObject.path(), max(resultObject.path()));
+        }
+        return null;
+    }
+
+
+    public static final int NUM_PRODUCERS = 3;
+
+    public static void run()
+    {
+        executorService = Executors.newCachedThreadPool();
+        CountDownLatch latch = new CountDownLatch(NUM_PRODUCERS);
+        CountDownLatch puttingIntoList = new CountDownLatch(1);
+
+
+        // Proposal 1: Before the consumer waits, it checks if something is in the list.
+        // Proposal 2: Before the producer sends the signal, it checks if a consumer is waiting.
+
+        new Thread(() ->
+        {
+            System.out.println("produce Into List thread started");
+            produceIntoList(THE_LIST, Paths.get("/Users/gabriel/Documents/AUHACK/CONCURRENCY_PROJECT/data_example"));
+            puttingIntoList.countDown();
+        }).start();
+
+        IntStream.range(0, NUM_PRODUCERS).forEach(
+                i ->
+                {
+                    new Thread(() ->
+                    {
+                        System.out.println("new Thread created");
+                        producer(executorService);
+                        latch.countDown();
+                    }).start();
+                });
+
+        try
+        {
+            puttingIntoList.await();
+            latch.await();
+            executorService.shutdown();
+            executorService.awaitTermination(1L, TimeUnit.DAYS);
+        } catch (InterruptedException e)
+        {
+            e.printStackTrace();
+        }
+
+    }
+
+
+    private static int max(Path file)
+    {
+        AtomicInteger total = new AtomicInteger(0);
+        try (BufferedReader reader = Files.newBufferedReader(file))
+        {
+            reader.lines().forEach((line) ->
+            {
+                String[] numbers = line.split(",");
+                for (String number : numbers)
+                {
+                    if (total.get() < Integer.parseInt(number))
+                        total.set(Integer.parseInt(number));
+                }
+            });
+        } catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        return total.get();
+    }
+
+
+    public static boolean didFind = false;
+    public static ResultObject query = null;
 
     /**
      * Finds a file that contains at most (no more than) n numbers and such that all
@@ -46,8 +190,52 @@ public class Exam
      */
     public static Result findAny(Path dir, int n, int min)
     {
-        throw new UnsupportedOperationException();
+        try
+        {
+            Files.walk(dir).forEach((x) ->
+            {
+                if (x.getFileName().toString().contains(".txt"))
+                {
+                    if (!didFind)
+                    {
+                        try (BufferedReader reader = Files.newBufferedReader(x))
+                        {
+                            reader.lines().forEach((line) ->
+                            {
+                                boolean hasbeenfound = true;
+                                String[] numbers = line.split(",");
+                                if (numbers.length <= n)
+                                {
+                                    for (String number : numbers)
+                                    {
+
+                                        if (Integer.parseInt(number) < min)
+                                        {
+                                            hasbeenfound = false;
+                                            break;
+                                        }
+                                    }
+                                    if (hasbeenfound)
+                                    {
+                                        query = new ResultObject(x, 42); //WHAT THE FUCK IS NUMBAH
+                                        didFind = true;
+                                    }
+                                }
+                            });
+                        } catch (IOException e)
+                        {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        return query;
     }
+
 
     /**
      * Computes overall statistics about the occurrences of numbers in a directory.
@@ -60,4 +248,22 @@ public class Exam
     {
         throw new UnsupportedOperationException();
     }
+
+    public static void main(String[] args)
+    {
+        doAndMeasure("Executors", () -> run());
+    }
+
+    public static void doAndMeasure(String caption, Runnable runnable)
+    {
+        long tStart = System.currentTimeMillis();
+        runnable.run();
+        System.out.println(caption + " took " + (System.currentTimeMillis() - tStart) + "ms");
+        THE_LIST.forEach((x) ->
+        {
+            System.out.println(x.path() + ": " + x.number());
+        });
+    }
+
+
 }

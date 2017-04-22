@@ -1,7 +1,5 @@
 package endpackage;
 
-
-
 import java.nio.file.Path;
 
 /**
