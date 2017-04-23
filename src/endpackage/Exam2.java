@@ -11,7 +11,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 /**
@@ -139,10 +140,9 @@ public class Exam2
         Files.walk(Paths.get(path)).parallel().filter((x) -> x.toString().endsWith(".txt")).forEach((x) ->
         {
             THE_LIST.add(new ResultObject(x, -1));
-            executor.submit(() -> processResult(THE_LIST, RESULT_LIST));
+            executor.submit(() -> processResult(THE_LIST, RESULT_LIST)); //process the result concurrently
         });
     }
-
 
     public static void processResult(BlockingDeque<ResultObject> iteratorList, BlockingDeque<ResultObject> resultList)
     {
@@ -185,6 +185,28 @@ public class Exam2
     }
 
 
+    public static boolean processAny(Path path, int n, int min)
+    {
+        try
+        {
+            int[] initialStream = Files.lines(path).parallel().map(x -> x.split(",")).flatMap(x -> Arrays.stream(x).parallel()).mapToInt(Integer::parseInt).toArray();
+            int listSize = initialStream.length;
+            IntStream ints = Arrays.stream(initialStream);
+            int fileMin = ints.min().getAsInt();
+            boolean found = listSize >= n && fileMin >= min;
+            if (found)
+                System.out.println("found n: " + n + " min: " + min + " file n: " + listSize + " file min: " + fileMin);
+            else
+                System.out.println("NOT found n: " + n + " min: " + min + " file n: " + listSize + " file min: " + fileMin);
+            return found;
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
     /**
      * Finds a file that contains at most (no more than) n numbers and such that all
      * numbers in the file are equal or greater than min.
@@ -198,9 +220,14 @@ public class Exam2
      */
     public static Result findAny(Path dir, int n, int min)
     {
+        //first clear the list.
         try
         {
-            Stream stream = Files.walk(dir, 0, FileVisitOption.FOLLOW_LINKS);
+            Files.walk(dir, 1, FileVisitOption.FOLLOW_LINKS).parallel()
+                    .filter(p -> p.toString().endsWith(".txt"))
+                    .collect(Collectors.toList()).stream().filter(p -> processAny(p, 170, 6))
+                    .findFirst()
+                    .ifPresent(System.out::println);
 
         } catch (Exception e)
         {
@@ -248,9 +275,14 @@ public class Exam2
     }
 
 
-    public static void main(String[] args)
+    public static void main(String[] args) throws Exception
     {
-        doAndMeasure("Executors", () -> run());
+        // doAndMeasure("Executors", () -> run());
+
+        //System.out.println(Files.walk(Paths.get("data_example/d2/d4"), 1, FileVisitOption.FOLLOW_LINKS)
+
+
+        findAny(Paths.get("data_example"), 170, 0);
 
     }
 
