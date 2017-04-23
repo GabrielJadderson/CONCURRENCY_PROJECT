@@ -8,8 +8,8 @@ import java.nio.file.Path;
 public class ResultObject implements Result
 {
 
-    private final Path path;
-    private final int number;
+    private Path path;
+    private int number;
 
     public ResultObject(Path path, int number)
     {
@@ -29,4 +29,8 @@ public class ResultObject implements Result
         return number;
     }
 
+    public void setNumber(int number)
+    {
+        this.number = number;
+    }
 }

@@ -2,14 +2,12 @@ package endpackage;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * @author Gabriel Jadderson github.com/TheProthean
@@ -28,7 +26,7 @@ public class Exam
     public static CountDownLatch countDownLatch = new CountDownLatch(1);
     public static DirectoryStream<Path> stream;
 
-    private static final BlockingDeque<ResultObject> THE_LIST = new LinkedBlockingDeque<>();
+    private static final BlockingDeque<ResultObject> THE_LIST = new LinkedBlockingDeque<ResultObject>();
     private static final BlockingDeque<ResultObject> resultList = new LinkedBlockingDeque<>();
     //public static List<Result> resultList = Collections.synchronizedList(new ArrayList<>());
 
@@ -79,14 +77,15 @@ public class Exam
 
     public static void producer(ExecutorService executor)
     {
-        IntStream.range( 0, 500 ).forEach( i ->
+        IntStream.range(0, 500).forEach(i ->
         {
             Future<ResultObject> future = executor.submit(() -> consume(THE_LIST.takeFirst()));
             try
             {
                 ResultObject object = future.get();
 
-                synchronized (resultList) {
+                synchronized (resultList)
+                {
                     resultList.add(object);
                 }
                 System.out.println(object.path() + " : " + object.number() + " SIZE OF LIST: " + resultList.size() + " blocking list:" + THE_LIST.size());
@@ -123,7 +122,7 @@ public class Exam
         new Thread(() ->
         {
             System.out.println("produce Into List thread started");
-            produceIntoList(THE_LIST, Paths.get("/Users/gabriel/Documents/AUHACK/CONCURRENCY_PROJECT/data_example"));
+            produceIntoList(THE_LIST, Paths.get("C:\\Users\\mulli\\OneDrive\\Dokumenter\\IdeaProjects\\Concurrency_Project_final\\CONCURRENCY_PROJECT\\data_example"));
             puttingIntoList.countDown();
         }).start();
 
@@ -192,48 +191,13 @@ public class Exam
     {
         try
         {
-            Files.walk(dir).forEach((x) ->
-            {
-                if (x.getFileName().toString().contains(".txt"))
-                {
-                    if (!didFind)
-                    {
-                        try (BufferedReader reader = Files.newBufferedReader(x))
-                        {
-                            reader.lines().forEach((line) ->
-                            {
-                                boolean hasbeenfound = true;
-                                String[] numbers = line.split(",");
-                                if (numbers.length <= n)
-                                {
-                                    for (String number : numbers)
-                                    {
+            Stream stream = Files.walk(dir, 0, FileVisitOption.FOLLOW_LINKS);
 
-                                        if (Integer.parseInt(number) < min)
-                                        {
-                                            hasbeenfound = false;
-                                            break;
-                                        }
-                                    }
-                                    if (hasbeenfound)
-                                    {
-                                        query = new ResultObject(x, 42); //WHAT THE FUCK IS NUMBAH
-                                        didFind = true;
-                                    }
-                                }
-                            });
-                        } catch (IOException e)
-                        {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            });
         } catch (Exception e)
         {
             e.printStackTrace();
         }
-        return query;
+        return null;
     }
 
 
