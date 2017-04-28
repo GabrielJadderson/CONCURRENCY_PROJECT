@@ -180,7 +180,7 @@ public class Exam
      * Finds a file that contains at most (no more than) n numbers and such that all
      * numbers in the file are equal or greater than min.
      * <p>
-     * This method searches only for one (any) file in the directory
+    * This method searches only for one (any) file in the directory
      * (parameter dir) such that the condition above is respected.
      * As soon as one such occurrence is found, the search can be
      * stopped and the method can return immediately.

@@ -1,7 +1,5 @@
 package endpackage;
 
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -14,7 +12,7 @@ import java.util.stream.IntStream;
 /**
  * @author Fabrizio Montesi <fmontesi@imada.sdu.dk>
  */
-public class GuardedBlocks
+public class GuardedBlocks2
 {
 
     private static final Deque<ResultObject> THE_LIST = new LinkedList<>();
@@ -35,7 +33,7 @@ public class GuardedBlocks
                             list.add(prod);
                             list.notify();
                         }
-                        //System.out.println("produced a file.");
+
                     });
         } catch (Exception e)
         {
@@ -81,29 +79,10 @@ public class GuardedBlocks
         }
     }
 
-    private static int getMax(Path file)
-    {
-        AtomicInteger total = new AtomicInteger(0);
-        try (BufferedReader reader = Files.newBufferedReader(file))
-        {
-            reader.lines().forEach((line) ->
-            {
-                String[] numbers = line.split(",");
-                for (String number : numbers)
-                {
-                    if (total.get() < Integer.parseInt(number))
-                        total.set(Integer.parseInt(number));
-                }
-            });
-        } catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-        return total.get();
+
+    public static int getMax(Path path) {
+        return 0;
     }
-
-
-
 
 	/* private static void consume( Deque< Product > list, String threadName, CountDownLatch latch )
     {

@@ -1,6 +1,5 @@
 package endpackage;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileVisitOption;
@@ -10,7 +9,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -24,7 +22,7 @@ public class Exam2
 
     public static final BlockingDeque<ResultObject> THE_LIST = new LinkedBlockingDeque<ResultObject>();
     public static final BlockingDeque<ResultObject> RESULT_LIST = new LinkedBlockingDeque<ResultObject>();
-    public static final ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 1);
+    public static final ExecutorService executor = Executors.newFixedThreadPool(4 + 1);
 
     /**
      * inserts into {@link null} asynchronously
@@ -160,28 +158,14 @@ public class Exam2
     public static int getMaxAsynch(Path path) throws IOException
     {
         //long d = Files.lines(path).parallel().map(x -> x.split(",")).flatMap(x -> Arrays.stream(x)).count(); //USE THIS FOR FIND ANY!!!!!!!!!
-        return Files.lines(path).parallel().map(x -> x.split(",")).flatMap(x -> Arrays.stream(x).parallel()).mapToInt(Integer::parseInt).max().getAsInt();
-    }
-
-    private static int getMax(Path file)
-    {
-        AtomicInteger total = new AtomicInteger(0);
-        try (BufferedReader reader = Files.newBufferedReader(file))
-        {
-            reader.lines().forEach((line) ->
-            {
-                String[] numbers = line.split(",");
-                for (String number : numbers)
-                {
-                    if (total.get() < Integer.parseInt(number))
-                        total.set(Integer.parseInt(number));
-                }
-            });
-        } catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-        return total.get();
+        return Files.lines(path)
+                .parallel()
+                .map(x -> x.split(","))
+                .flatMap(x -> Arrays.stream(x)
+                        .parallel())
+                .mapToInt(Integer::parseInt)
+                .max()
+                .getAsInt();
     }
 
 
@@ -193,7 +177,7 @@ public class Exam2
             int listSize = initialStream.length;
             IntStream ints = Arrays.stream(initialStream);
             int fileMin = ints.min().getAsInt();
-            boolean found = listSize >= n && fileMin >= min;
+            boolean found = listSize <= n && fileMin >= min;
             if (found)
                 System.out.println("found n: " + n + " min: " + min + " file n: " + listSize + " file min: " + fileMin);
             else
@@ -247,7 +231,7 @@ public class Exam2
             //getAndStoreTxtFiles(Paths.get("C:\\Users\\mulli\\OneDrive\\Dokumenter\\IdeaProjects\\Concurrency_Project_final\\CONCURRENCY_PROJECT\\data_example"), executor, 0);
             try
             {
-                incrediblyFastDirectoryTreeIterator("C:\\Users\\mulli\\OneDrive\\Dokumenter\\IdeaProjects\\Concurrency_Project_final\\CONCURRENCY_PROJECT\\data_example", executor);
+                incrediblyFastDirectoryTreeIterator("data_example", executor);
             } catch (Exception e)
             {
                 e.printStackTrace();
@@ -265,11 +249,12 @@ public class Exam2
             executor.awaitTermination(1L, TimeUnit.DAYS);
 
 
-            RESULT_LIST.forEach((x) -> System.out.println(x.path() + " : " + x.number()));
-            System.out.println(THE_LIST.size());
-            System.out.println("files processed: " + RESULT_LIST.size());
+            //RESULT_LIST.forEach((x) -> System.out.println(x.path() + " : " + x.number()));
+            //System.out.println(THE_LIST.size());
+            //System.out.println("files processed: " + RESULT_LIST.size());
         } catch (InterruptedException e)
         {
+            e.printStackTrace();
         }
 
     }
@@ -277,13 +262,12 @@ public class Exam2
 
     public static void main(String[] args) throws Exception
     {
-        // doAndMeasure("Executors", () -> run());
+         doAndMeasure("Executors", () -> run());
 
         //System.out.println(Files.walk(Paths.get("data_example/d2/d4"), 1, FileVisitOption.FOLLOW_LINKS)
 
 
-        findAny(Paths.get("data_example"), 170, 0);
-
+        //findAny(Paths.get("data_example"), 170, 0);
     }
 
     public static void doAndMeasure(String caption, Runnable runnable)

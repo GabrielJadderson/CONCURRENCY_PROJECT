@@ -33,4 +33,9 @@ public class ResultObject implements Result
     {
         this.number = number;
     }
+
+    public void setPath(Path path)
+    {
+        this.path = path;
+    }
 }
