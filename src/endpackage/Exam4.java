@@ -7,6 +7,9 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
@@ -20,7 +23,7 @@ public class Exam4
     public static ResultObject resultObject = new ResultObject(null, -1);
 
 
-
+    static AtomicBoolean isDone = new AtomicBoolean(false);
     public static boolean processAny(Path path, int n, int min)
     {
         try
@@ -29,7 +32,7 @@ public class Exam4
             int listSize = initialStream.length;
             IntStream ints = Arrays.stream(initialStream);
             int fileMin = ints.min().getAsInt();
-            boolean found = listSize <= n && fileMin >= min;
+            boolean found = listSize >= n && fileMin >= min;
             if (found)
                 System.out.println("found n: " + n + " min: " + min + " file n: " + listSize + " file min: " + fileMin);
             else
@@ -42,15 +45,31 @@ public class Exam4
         return false;
     }
 
-    public static void produce(Path path, Deque<ResultObject> list) {
+
+
+    public static void produce(Path path, Deque<ResultObject> list, ExecutorService executorService)
+    {
+        try
+        {
+            Files.walk(path)
+                    .filter(x -> x.toString().endsWith(".txt"))
+                    .forEach(x ->
+                    {
+                        executorService.submit(() -> list.add(new ResultObject(x, -1)));
+                    });
+            isDone.set(true);
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+        }
 
     }
 
 
-
-    public static void consume(Deque<ResultObject> list, CountDownLatch latch, AtomicInteger counter) {
-        boolean keepRun = true;
-        while (keepRun)
+    static AtomicBoolean keepRun = new AtomicBoolean(true);
+    public static void consume(Deque<ResultObject> list, CountDownLatch latch, AtomicInteger counter, int n, int min)
+    {
+        while (keepRun.get())
         {
             synchronized (list)
             {
@@ -58,7 +77,7 @@ public class Exam4
                 {
                     if (latch.getCount() == 0)
                     {
-                        keepRun = false;
+                        keepRun.set(false);
                     } else
                     {
                         try
@@ -71,10 +90,31 @@ public class Exam4
                     }
                 } else
                 {
+                    if (latch.getCount() == 0)
+                    {
+                        keepRun.set(false);
+                    } else
+                    {
+                        try
+                        {
+                            list.wait();
+                        } catch (InterruptedException e)
+                        {
+                        }
+                        counter.incrementAndGet();
+                    }
                     ResultObject prod = list.removeFirst();
                     synchronized (resultObject)
                     {
-                        //resultObject = new ResultObject(prod.path(), )
+                        if (processAny(prod.path(), n, min))
+                        {
+                            keepRun.set(false);
+                            latch.countDown();
+                            break;
+                        } else
+                        {
+                            //consume(list, latch, counter, n, min);
+                        }
                     }
                     //System.out.println("consumed a product " + prod.path());
                 }
@@ -84,9 +124,10 @@ public class Exam4
 
     public static final int NUM_PRODUCERS = 4;
 
-    public static void run()
+    public static void run(int n, int min)
     {
         AtomicInteger counter = new AtomicInteger(0);
+        ExecutorService executor = Executors.newFixedThreadPool(4);
 
         // Proposal 1: Before the consumer waits, it checks if something is in the list.
         // Proposal 2: Before the producer sends the signal, it checks if a consumer is waiting.
@@ -96,7 +137,7 @@ public class Exam4
 
         new Thread(() ->
         {
-            produce(Paths.get("data_example"), THE_LIST);
+            produce(Paths.get("data_example"), THE_LIST, executor);
             latch.countDown();
         }).start();
 
@@ -105,7 +146,7 @@ public class Exam4
                 {
                     new Thread(() ->
                     {
-                        consume(THE_LIST, latch, counter);
+                        consume(THE_LIST, latch, counter, n, min);
                         latch2.countDown();
                     }).start();
                 });
@@ -126,7 +167,7 @@ public class Exam4
 
     public static void main(String[] args)
     {
-        doAndMeasure("Executors", () -> run());
+        doAndMeasure("Executors", () -> run(65, 6));
     }
 
     public static void doAndMeasure(String caption, Runnable runnable)

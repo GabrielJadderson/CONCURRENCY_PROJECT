@@ -190,6 +190,10 @@ public class Exam2
         return false;
     }
 
+    static boolean didFind = false;
+
+
+
 
     /**
      * Finds a file that contains at most (no more than) n numbers and such that all
