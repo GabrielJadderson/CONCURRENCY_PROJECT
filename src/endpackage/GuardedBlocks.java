@@ -1,13 +1,16 @@
 package endpackage;
 
-import java.io.BufferedReader;
+import endpackage.FinalPackage.ResultObject;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Deque;
-import java.util.LinkedList;
+import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
@@ -17,10 +20,13 @@ import java.util.stream.IntStream;
 public class GuardedBlocks
 {
 
-    private static final Deque<ResultObject> THE_LIST = new LinkedList<>();
-    private static final Deque<ResultObject> RESULT_LIST = new LinkedList<>();
+    //
+    // private static final Deque<ResultObject> THE_LIST = new LinkedList<>();
+    private static final BlockingDeque<ResultObject> THE_LIST = new LinkedBlockingDeque<>();
+    //private static final Deque<ResultObject> RESULT_LIST = new LinkedList<>();
+    private static final BlockingDeque<ResultObject> RESULT_LIST = new LinkedBlockingDeque<>();
 
-    private static void produce(Path startDir, Deque<ResultObject> list)
+    private static void FindFiles(Path startDir, BlockingDeque<ResultObject> list)
     {
         try
         {
@@ -35,7 +41,6 @@ public class GuardedBlocks
                             list.add(prod);
                             list.notify();
                         }
-                        //System.out.println("produced a file.");
                     });
         } catch (Exception e)
         {
@@ -45,7 +50,7 @@ public class GuardedBlocks
 
     private final static AtomicInteger counter = new AtomicInteger(0);
 
-    private static void consume(Deque<ResultObject> list, Deque<ResultObject> resultObjects, CountDownLatch latch)
+    private static void processFile(Deque<ResultObject> list, BlockingDeque<ResultObject> resultObjects, CountDownLatch latch) throws IOException
     {
         boolean keepRun = true;
         while (keepRun)
@@ -81,57 +86,19 @@ public class GuardedBlocks
         }
     }
 
-    private static int getMax(Path file)
+    private static int getMax(Path path) throws IOException
     {
         AtomicInteger total = new AtomicInteger(0);
-        try (BufferedReader reader = Files.newBufferedReader(file))
+        Files.lines(path).map(x -> x.split(",")).flatMap(x -> Arrays.stream(x)).forEach(x ->
         {
-            reader.lines().forEach((line) ->
-            {
-                String[] numbers = line.split(",");
-                for (String number : numbers)
-                {
-                    if (total.get() < Integer.parseInt(number))
-                        total.set(Integer.parseInt(number));
-                }
-            });
-        } catch (IOException e)
-        {
-            e.printStackTrace();
-        }
+            if (total.get() < Integer.parseInt(x))
+                total.set(Integer.parseInt(x));
+        });
         return total.get();
     }
 
 
-
-
-	/* private static void consume( Deque< Product > list, String threadName, CountDownLatch latch )
-    {
-		boolean receivedNotify = false;
-		boolean keepRun = true;
-		while( keepRun ) {
-			synchronized( list ) {
-				// Wait for a signal from a producer
-				if ( !list.isEmpty() ) {
-					receivedNotify = false;
-					Product prod = list.removeFirst();
-					System.out.println( threadName + " consuming " + prod.toString() );
-				} else if ( latch.getCount() == 0 ) {
-					keepRun = false;
-				} else {
-					if ( receivedNotify ) {
-						System.out.println( "DUH! Wasted iteration." );
-					}
-					try {
-						list.wait();
-						receivedNotify = true;
-					} catch( InterruptedException e ) {}
-				}
-			}
-		}
-	} */
-
-    private static final int NUM_PRODUCERS = 4;
+    private static final int NUM_PRODUCERS = Runtime.getRuntime().availableProcessors() - 1;
 
     public static void run()
     {
@@ -143,7 +110,7 @@ public class GuardedBlocks
 
         new Thread(() ->
         {
-            produce(Paths.get("data_example"), THE_LIST);
+            FindFiles(Paths.get("data_example"), THE_LIST);
             latch.countDown();
         }).start();
 
@@ -152,7 +119,13 @@ public class GuardedBlocks
                 {
                     new Thread(() ->
                     {
-                        consume(THE_LIST, RESULT_LIST, latch);
+                        try
+                        {
+                            processFile(THE_LIST, RESULT_LIST, latch);
+                        } catch (IOException e)
+                        {
+                            e.printStackTrace();
+                        }
                         latch2.countDown();
                     }).start();
                 });

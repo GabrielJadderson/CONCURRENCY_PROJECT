@@ -1,5 +1,9 @@
 package endpackage;
 
+import endpackage.FinalPackage.ResultObject;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,25 +19,22 @@ import java.util.stream.IntStream;
 public class GuardedBlocks2
 {
 
-    private static final Deque<ResultObject> THE_LIST = new LinkedList<>();
-    private static final Deque<ResultObject> RESULT_LIST = new LinkedList<>();
+    private static final Deque<Path> THE_LIST = new LinkedList<>();
+    private static final Deque<Path> RESULT_LIST = new LinkedList<>();
 
-    private static void produce(Path startDir, Deque<ResultObject> list)
+    private static void produce(Path startDir, Deque<Path> list)
     {
         try
         {
             Files.walk(startDir)
-                    .parallel()
                     .filter(x -> x.toString().endsWith(".txt"))
                     .forEach(x ->
                     {
-                        ResultObject prod = new ResultObject(x, -1);
                         synchronized (list)
                         {
-                            list.add(prod);
+                            list.add(x);
                             list.notify();
                         }
-
                     });
         } catch (Exception e)
         {
@@ -41,9 +42,10 @@ public class GuardedBlocks2
         }
     }
 
+    public static ResultObject resultObject = new ResultObject(null, -1);
     private final static AtomicInteger counter = new AtomicInteger(0);
 
-    private static void consume(Deque<ResultObject> list, Deque<ResultObject> resultObjects, CountDownLatch latch)
+    private static boolean consume(Deque<Path> list, CountDownLatch latch, int n, int min)
     {
         boolean keepRun = true;
         while (keepRun)
@@ -67,92 +69,90 @@ public class GuardedBlocks2
                     }
                 } else
                 {
-                    ResultObject prod = list.removeFirst();
-                    synchronized (resultObjects)
+                    Path prod = list.removeFirst();
+                    if (isQualified(prod, n, min))
                     {
-                        resultObjects.add(new ResultObject(prod.path(), getMax(prod.path())));
-                        resultObjects.notify();
+                        synchronized (resultObject)
+                        {
+                            resultObject = new ResultObject(prod.toAbsolutePath(), 0);
+                            latch.countDown();
+                            return true;
+                        }
                     }
-                    //System.out.println("consumed a product " + prod.path());
                 }
             }
         }
+        return false;
     }
 
 
-    public static int getMax(Path path) {
-        return 0;
-    }
-
-	/* private static void consume( Deque< Product > list, String threadName, CountDownLatch latch )
+    public static boolean isQualified(Path path, int n, int min)
     {
-		boolean receivedNotify = false;
-		boolean keepRun = true;
-		while( keepRun ) {
-			synchronized( list ) {
-				// Wait for a signal from a producer
-				if ( !list.isEmpty() ) {
-					receivedNotify = false;
-					Product prod = list.removeFirst();
-					System.out.println( threadName + " consuming " + prod.toString() );
-				} else if ( latch.getCount() == 0 ) {
-					keepRun = false;
-				} else {
-					if ( receivedNotify ) {
-						System.out.println( "DUH! Wasted iteration." );
-					}
-					try {
-						list.wait();
-						receivedNotify = true;
-					} catch( InterruptedException e ) {}
-				}
-			}
-		}
-	} */
+        try (FileReader fileReader = new FileReader(path.toFile()); BufferedReader bufferedReader = new BufferedReader(fileReader))
+        {
+            String line;
+            while ((line = bufferedReader.readLine()) != null)
+            {
+                String[] numbers = line.split(",");
+                if (numbers.length >= n)
+                    return false;
+                else
+                    for (String number : numbers)
+                        if (Integer.parseInt(number) <= min)
+                            return true;
+            }
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        return false;
+    }
 
-    private static final int NUM_PRODUCERS = 4;
+    private static final int NUM_CONSUMERS = 2;
 
-    public static void run()
+    public static void run(int n, int min)
     {
         // Proposal 1: Before the consumer waits, it checks if something is in the list.
         // Proposal 2: Before the producer sends the signal, it checks if a consumer is waiting.
 
-        CountDownLatch latch = new CountDownLatch(1);
-        CountDownLatch latch2 = new CountDownLatch(NUM_PRODUCERS);
+        CountDownLatch productionLatch = new CountDownLatch(1);
+        CountDownLatch consumerLatch = new CountDownLatch(NUM_CONSUMERS);
 
         new Thread(() ->
         {
             produce(Paths.get("data_example"), THE_LIST);
-            latch.countDown();
+            productionLatch.countDown();
         }).start();
 
-        IntStream.range(0, NUM_PRODUCERS).forEach(
+        IntStream.range(0, NUM_CONSUMERS).forEach(
                 i ->
                 {
                     new Thread(() ->
                     {
-                        consume(THE_LIST, RESULT_LIST, latch);
-                        latch2.countDown();
+                        consume(THE_LIST, productionLatch, n, min);
+                        consumerLatch.countDown();
                     }).start();
                 });
         try
         {
-            latch.await();
+            productionLatch.await();
             synchronized (THE_LIST)
             {
                 THE_LIST.notifyAll();
             }
-            latch2.await();
+            consumerLatch.await();
+            if (resultObject != null)
+                System.out.println(resultObject.path());
         } catch (InterruptedException e)
         {
         }
-        System.out.println("WASTED: " + counter.get());
+        //System.out.println("WASTED: " + counter.get());
     }
 
 
     public static void main(String[] args)
     {
-        doAndMeasure("Executors", () -> run());
+        doAndMeasure("Executors", () -> run(1000, 10000));
     }
 
     public static void doAndMeasure(String caption, Runnable runnable)

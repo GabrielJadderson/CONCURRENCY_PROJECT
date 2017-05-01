@@ -1,5 +1,7 @@
 package endpackage;
 
+import endpackage.FinalPackage.Result;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
