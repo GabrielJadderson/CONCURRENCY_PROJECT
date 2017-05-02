@@ -1,5 +1,3 @@
-package endpackage.FinalPackage;
-
 import java.nio.file.Path;
 import java.util.List;
 
@@ -57,6 +55,6 @@ public class Exam
      */
     public static Stats stats(Path dir)
     {
-        throw new UnsupportedOperationException();
+        return new StatsProcessor().run(dir);
     }
 }

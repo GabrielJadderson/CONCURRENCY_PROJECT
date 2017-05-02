@@ -1,5 +1,3 @@
-package endpackage.FinalPackage;
-
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -28,7 +26,7 @@ public class ProcessAll
         {
             try
             {
-                fastDirectoryTreeIterator(dir, executor);
+                increadiblyFastDirectoryTreeIterator(dir, executor);
             } catch (Exception e)
             {
                 e.printStackTrace();
@@ -85,7 +83,7 @@ public class ProcessAll
     }
 
 
-    private void fastDirectoryTreeIterator(Path path, ExecutorService executor) throws IOException
+    private void increadiblyFastDirectoryTreeIterator(Path path, ExecutorService executor) throws IOException
     {
         Files.walk(path).parallel().filter((x) -> x.toString().endsWith(".txt")).forEach((x) ->
         {
