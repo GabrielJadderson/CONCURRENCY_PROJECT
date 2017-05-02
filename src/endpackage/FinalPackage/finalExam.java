@@ -10,7 +10,9 @@ public class finalExam
 
     public static void main(String[] args)
     {
-        doAndMeasure("Executors", () -> Exam.findAny(Paths.get("data_example"), 92, 6));
+        doAndMeasure("Executors", () -> {
+            Exam.findAll(Paths.get("data_example"));
+        });
     }
 
     public static void doAndMeasure(String caption, Runnable runnable)

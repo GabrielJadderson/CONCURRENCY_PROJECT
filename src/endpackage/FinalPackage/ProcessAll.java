@@ -17,7 +17,7 @@ public class ProcessAll
 {
 
     public final BlockingDeque<ResultObject> THE_LIST = new LinkedBlockingDeque<>();
-    public final BlockingDeque<Result> RESULT_LIST = new LinkedBlockingDeque<>();
+    public final BlockingDeque<ResultObject> RESULT_LIST = new LinkedBlockingDeque<>();
     public final ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() - 1);
     public CountDownLatch productionLatch = new CountDownLatch(1);
 
@@ -54,7 +54,7 @@ public class ProcessAll
     }
 
 
-    private static void processResult(BlockingDeque<ResultObject> iteratorList, BlockingDeque<Result> resultList)
+    private static void processResult(BlockingDeque<ResultObject> iteratorList, BlockingDeque<ResultObject> resultList)
     {
         try
         {
