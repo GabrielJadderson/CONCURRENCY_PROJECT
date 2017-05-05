@@ -2,11 +2,12 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /**
  * Created by Gabriel Jadderson on 01-05-2017.
@@ -73,9 +74,9 @@ public class ProcessAny
             String line;
             while ((line = bufferedReader.readLine()) != null)
             {
-                String[] numbers = line.split(",");
-                if (numbers.length <= n)
-                    if (Stream.of(numbers).mapToInt(Integer::parseInt).min().getAsInt() >= min)
+                ArrayList<Integer> list = new CustomSplitter().ultraFastSplitter(line);
+                if (list.size() <= n)
+                    if (Collections.min(list) >= min)
                     {
                         synchronized (resultObject)
                         {

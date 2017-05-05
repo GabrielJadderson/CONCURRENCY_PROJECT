@@ -7,7 +7,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /**
  * Created by Gabriel Jadderson on 01-05-2017.
@@ -79,18 +78,17 @@ public class StatsProcessor
             String line;
             while ((line = bufferedReader.readLine()) != null)
             {
-                String[] numbers = line.split(",");
+                ArrayList<Integer> list = new CustomSplitter().ultraFastSplitter(line);
 
                 //occurrences
-                int max = Stream.of(numbers).mapToInt(Integer::parseInt).max().getAsInt();
+                int max = Collections.max(list);
                 atMostMap.put(path.toString(), max);
-                Arrays.stream(numbers).parallel().forEach(x ->
+                list.stream().forEach(x ->
                 {
-                    int e = Integer.parseInt(x);
-                    if (numericFrequency.containsKey(e))
-                        numericFrequency.put(e, numericFrequency.get(e) + 1);
+                    if (numericFrequency.containsKey(x))
+                        numericFrequency.put(x, numericFrequency.get(x) + 1);
                     else
-                        numericFrequency.put(e, 1);
+                        numericFrequency.put(x, 1);
                 });
 
                 //Frequency of numbers
@@ -113,12 +111,12 @@ public class StatsProcessor
                 });
 
                 //total sum processing
-                int sum = Stream.of(numbers).mapToInt(Integer::parseInt).sum();
+                int sum = list.stream().mapToInt(Integer::intValue).sum();
                 byTotalsMap.put(path.toString(), sum);
                 synchronized (statsObject)
                 {
-                    statsObject.mostFrequent = mostFrequent[0];
-                    statsObject.leastFrequent = leastFrequent[0];
+                    statsObject.setMostFrequent(mostFrequent[0]);
+                    statsObject.setLeastFrequent(leastFrequent[0]);
                 }
             }
         } catch (Exception e)

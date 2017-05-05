@@ -4,9 +4,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.stream.Stream;
 
 /**
  * Created by Gabriel Jadderson on 01-05-2017.
@@ -72,8 +72,8 @@ public class ProcessAll
             String line;
             while ((line = bufferedReader.readLine()) != null)
             {
-                String[] numbers = line.split(",");
-                return Stream.of(numbers).mapToInt(Integer::parseInt).max().getAsInt();
+                ArrayList<Integer> list = new CustomSplitter().ultraFastSplitter(line);
+                return Collections.max(list);
             }
         } catch (Exception e)
         {

@@ -9,8 +9,8 @@ import java.util.List;
  */
 public class StatsObject implements Stats
 {
-    int mostFrequent = -1;
-    int leastFrequent = -1;
+    private int mostFrequent = -1;
+    private int leastFrequent = -1;
     List<Path> atMostList = new ArrayList<>();
     List<Path> byTotalsList = new ArrayList<>();
     HashMap<String, Integer> atMostHashMap = new HashMap<>();
@@ -57,6 +57,16 @@ public class StatsObject implements Stats
     public List<Path> byTotals()
     {
         return byTotalsList;
+    }
+
+    public void setMostFrequent(int mostFrequent)
+    {
+        this.mostFrequent = mostFrequent;
+    }
+
+    public void setLeastFrequent(int leastFrequent)
+    {
+        this.leastFrequent = leastFrequent;
     }
 
 
